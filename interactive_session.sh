@@ -1,0 +1,13 @@
+srun \
+--job-name="hardness" \
+--partition=h200 \
+--nodelist=euler \
+--gres=gpu:1g.35gb:1 \
+--cpus-per-task=4 \
+--mem=50G \
+--time=03:00:00 \
+--qos=expedite \
+--container-mounts="/storage/DSH/personal/rmarchesi/,/public_datasets/PublicDatasets/,/storage/DSH/projects/hardness_genai/,/mnt/md0/data" \
+--container-image="/storage/DSH/projects/hardness_genai/image.sqsh" \
+--container-remap-root \
+--pty bash

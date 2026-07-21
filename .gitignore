@@ -5,3 +5,6 @@ outputs/
 __pycache__/
 .DS_Store
 .ipynb_checkpoints/
+*.sqsh
+
+repos_genai/*/
