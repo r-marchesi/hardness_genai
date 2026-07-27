@@ -8,3 +8,11 @@ __pycache__/
 *.sqsh
 
 repos_genai/*/
+
+compiler_env/
+compiler_bin/
+
+compiler_env_v2/
+compiler_bin_v2/
+
+python_packages/

@@ -1,7 +1,6 @@
 import os
 import sys
 
-# Ensure Python can locate modules in the current working directory (PyTorch-VAE)
 sys.path.insert(0, os.getcwd())
 
 import torch
@@ -12,11 +11,10 @@ from torchvision import datasets, transforms
 from torch import optim
 from torch.optim.lr_scheduler import ExponentialLR
 
-# Imported from the local PyTorch-VAE repository
 from models.cvae import ConditionalVAE
 
 # ==========================================
-# FIX FOR ANTIXK HARDCODED BUG
+# HIGH-CAPACITY PATCHED ARCHITECTURE
 # ==========================================
 class PatchedConditionalVAE(ConditionalVAE):
     def decode(self, z: torch.Tensor) -> torch.Tensor:
@@ -27,27 +25,48 @@ class PatchedConditionalVAE(ConditionalVAE):
         result = self.final_layer(result)
         return result
 
+    def loss_function(self, *args, **kwargs) -> dict:
+        """
+        Overrides the default MSE loss with L1 Loss (Mean Absolute Error)
+        to force the decoder to generate sharper edges.
+        """
+        recons = args[0]
+        input = args[1]
+        mu = args[2]
+        log_var = args[3]
+
+        kld_weight = kwargs['M_N'] 
+
+        # Using L1 Loss instead of MSE
+        recons_loss = F.l1_loss(recons, input, reduction='mean')
+
+        # Standard KL Divergence
+        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
+
+        loss = recons_loss + kld_weight * kld_loss
+        return {'loss': loss, 'Reconstruction_Loss': recons_loss.detach(), 'KLD': -kld_loss.detach()}
+
 # ==========================================
-# ALIGNED WITH OFFICIAL CONFIG.YAML
+# MAXIMIZED CONFIGURATION
 # ==========================================
 CONFIG = {
     "dataset_path": "/public_datasets/PublicDatasets/cifar-100/",
     "out_dir": "../../checkpoints/vae",
     
-    # Architecture
+    # Upgraded Architecture Capacity
     "img_size": 32,
     "in_channels": 3,
     "num_classes": 100,
-    "latent_dim": 128,
-    "hidden_dims": [32, 64, 128, 256],
+    "latent_dim": 512,                           # Quadrupled latent bandwidth
+    "hidden_dims": [64, 128, 256, 512],          # Doubled channel width
     
-    # Training (From official yaml)
+    # Training
     "batch_size": 128,               
-    "lr": 0.005,                     # Back up to official 0.005
-    "scheduler_gamma": 0.95,         # Official LR decay
-    "kld_weight": 0.00025,           # Official static KL penalty
-    "max_epochs": 500,
-    "seed": 1265,                    # Official seed
+    "lr": 0.002,                                 # Slightly lower base LR for the larger network
+    "scheduler_gamma": 0.95,         
+    "kld_weight": 0.0001,                        # Relaxed KL penalty to prioritize reconstruction
+    "max_epochs": 1000,
+    "seed": 1265,                    
     
     # Validation & Early Stopping
     "val_split": 0.10,             
@@ -93,7 +112,6 @@ def train():
         hidden_dims=CONFIG["hidden_dims"]
     ).to(device)
 
-    # Added ExponentialLR matching their scheduler_gamma
     optimizer = optim.Adam(model.parameters(), lr=CONFIG["lr"])
     scheduler = ExponentialLR(optimizer, gamma=CONFIG["scheduler_gamma"])
 
@@ -114,11 +132,9 @@ def train():
     best_val_loss = float('inf')
     patience_counter = 0
 
-    # Force the static KLD weight from the official config
     kld_weight = CONFIG["kld_weight"]
 
     for epoch in range(CONFIG["max_epochs"]):
-        # --- TRAIN PHASE ---
         model.train()
         total_train_loss = 0
         
@@ -136,11 +152,8 @@ def train():
             total_train_loss += loss.item()
             
         avg_train_loss = total_train_loss / len(train_loader)
-        
-        # Step the learning rate scheduler after each epoch
         scheduler.step()
         
-        # --- VALIDATION PHASE ---
         model.eval()
         total_val_loss = 0
         with torch.no_grad():

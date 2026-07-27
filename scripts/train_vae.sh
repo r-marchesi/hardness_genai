@@ -15,18 +15,13 @@
 #SBATCH --mail-user=rmarchesi@fbk.eu
 
 echo "Starting Visual-VAE Training on CIFAR-100"
-cd /storage/DSH/projects/hardness_genai/repos_genai/visual-vae
+cd /storage/DSH/projects/hardness_genai/repos_genai/PyTorch-VAE
 
-# 1. Install TensorFlow locally (required by the repo's internal config)
-pip install --user tensorflow
 
-# 2. Create a config for CIFAR-100 from the CIFAR-10 template
-cp -n config/cifar10.py config/cifar100.py
+# Launch training
+python ../../scripts/train_cvae_cifar100.py
 
-# Replace instances of 'cifar10' with 'cifar100' inside the new config file
-sed -i 's/cifar10/cifar100/g' config/cifar100.py
-
-# 3. Launch training
-python scripts/train.py --config config/cifar100.py --global_dir ../../checkpoints/vae
+# Launch generation
+python ../../scripts/generate_cvae_cifar100.py
 
 echo "Job Complete or Exited!"

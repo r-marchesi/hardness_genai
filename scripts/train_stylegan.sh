@@ -14,18 +14,63 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=rmarchesi@fbk.eu
 
-echo "Starting StyleGAN2-ADA Training on CIFAR-100"
-cd /storage/DSH/projects/hardness_genai/repos_genai/stylegan2-ada-pytorch
+# Define absolute paths 
+PROJECT_ROOT="/storage/DSH/projects/hardness_genai"
+COMPILER_ENV="$PROJECT_ROOT/compiler_env_v2"
+COMPILER_BIN="$PROJECT_ROOT/compiler_bin_v2"
+PYTHON_PACKAGES="$PROJECT_ROOT/python_packages"
 
+cd $PROJECT_ROOT/repos_genai/stylegan3
 
-# 2. Install the missing C++ build tool into your local user directory
-pip install --user ninja
+echo "Setting up dependencies in mounted storage..."
 
-# 3. Launch training
-torchrun --standalone --nproc_per_node=1 train.py \
-    --outdir=../../checkpoints/stylegan \
-    --data=../../data/cifar100_custom.zip \
+# 1. Create a local package directory in the mounted storage
+mkdir -p $PYTHON_PACKAGES
+
+# 2. Use the exact container Python to install dependencies
+/opt/conda/bin/python -m pip install --target=$PYTHON_PACKAGES ninja click requests tqdm scipy
+
+# 3. Force Python to look in this specific folder for 'click'
+export PYTHONPATH=$PYTHON_PACKAGES:$PYTHONPATH
+
+# 4. Check/Link the C++ toolchain (Skips download if it already exists)
+if [ ! -d "$COMPILER_ENV" ]; then
+    echo "Downloading toolchain... (This will take ~2 minutes)"
+    /opt/conda/bin/conda create -y -p $COMPILER_ENV -c conda-forge -c nvidia \
+        gxx_linux-64=11 gcc_linux-64=11 cuda-toolkit=12.1
+fi
+
+mkdir -p $COMPILER_BIN
+ln -sf $COMPILER_ENV/bin/x86_64-conda-linux-gnu-c++ $COMPILER_BIN/c++
+ln -sf $COMPILER_ENV/bin/x86_64-conda-linux-gnu-g++ $COMPILER_BIN/g++
+ln -sf $COMPILER_ENV/bin/x86_64-conda-linux-gnu-gcc $COMPILER_BIN/gcc
+
+# 5. Export critical environment variables for PyTorch compilation
+export PATH=$COMPILER_BIN:$COMPILER_ENV/bin:$HOME/.local/bin:$PATH
+export CXX=c++
+export CC=gcc
+export CUDA_HOME=$COMPILER_ENV
+
+export CPATH=$CUDA_HOME/include:$CUDA_HOME/targets/x86_64-linux/include:$CPATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDA_HOME/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+
+rm -rf ~/.cache/torch_extensions/
+
+echo "Using C++ compiler at: $(which c++)"
+echo "Using CUDA_HOME at: $CUDA_HOME"
+echo "Using NVCC at: $(which nvcc)"
+
+echo "Starting Official Conditional StyleGAN Training..."
+
+# 6. Force the use of the container's Python binary to avoid Conda's empty Python
+/opt/conda/bin/python train.py \
+    --outdir=$PROJECT_ROOT/checkpoints/stylegan \
+    --cfg=stylegan2 \
+    --data=$PROJECT_ROOT/data/cifar100_stylegan.zip \
+    --gpus=1 \
+    --batch=64 \
+    --gamma=0.01 \
     --cond=1 \
-    --cfg=cifar
+    --mirror=1
 
-echo "Job Complete or Exited!"
+echo "Training Job Complete!"
