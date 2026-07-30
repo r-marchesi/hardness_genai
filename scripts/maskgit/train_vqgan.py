@@ -25,11 +25,12 @@ def main():
 
     prepare_cifar_folder(data_dir, dataset_root)
 
-    # 1. Initialize the VQGAN (32x32 -> 8x8 token grid)
+    # 1. Initialize the VQGAN
     vae = VQGanVAE(
         dim = 64,
         channels = 3,
         layers = 2,
+        discr_layers = 2,           
         num_tokens = 8192,
         temperature = 0.9
     )
@@ -37,15 +38,14 @@ def main():
     # 2. Initialize the Trainer
     trainer = VQGanVAETrainer(
         vae = vae,
-        image_size = 32,
-        folder = data_dir,
-        num_train_steps = 50000,
+        image_size = 32,            # CIFAR-100 resolution
+        folder = data_dir,          # Point to the extracted images
+        num_train_steps = 50000,    # Total optimization steps
         lr = 3e-4,
         batch_size = 128,
         grad_accum_every = 1,
-        amp = True,
-        save_results_every = 1000,
-        save_model_every = 1000,
+        save_results_every = 1000,  # Save reconstructions to monitor progress
+        save_model_every = 1000,    # Save checkpoints
         results_folder = results_dir
     )
 
