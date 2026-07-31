@@ -16,3 +16,6 @@ compiler_env_v2/
 compiler_bin_v2/
 
 python_packages/
+
+*.jpg
+*.png
