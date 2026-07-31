@@ -11,16 +11,14 @@ from transformers import PreTrainedTokenizerBase
 PreTrainedTokenizerBase.batch_encode_plus = PreTrainedTokenizerBase.__call__
 
 def main():
-    # Use BF16 to prevent T5 NaNs
     accelerator = Accelerator(mixed_precision="bf16")
     
     dataset_root = "../../data"
     results_dir = "../../checkpoints/maskgit/transformer"
     os.makedirs(results_dir, exist_ok=True)
     
-    # 1. Load the frozen Stage 1 VQGAN Tokenizer
-    # THE FIX: num_tokens is 65536, NOT 8192!
-    vae = VQGanVAE(dim=64, channels=3, layers=2, discr_layers=2, num_tokens=65536, temperature=0.9)
+    # THE FIX: Matches the 1024 codebook size
+    vae = VQGanVAE(dim=64, channels=3, layers=2, discr_layers=2, codebook_size=1024, temperature=0.9)
     
     print("Loading EMA weights...")
     ema_state_dict = torch.load("../../checkpoints/maskgit/vqgan/vae.49000.ema.pt", map_location="cpu")
@@ -34,10 +32,10 @@ def main():
     vae.requires_grad_(False)
     vae.eval()
     
-    # 2. Create the Bidirectional Transformer
+    # THE FIX: Matches the 1024 codebook size
     transformer = MaskGitTransformer(
-        num_tokens = 65536,  # THE FIX: Matches the true VAE vocabulary!
-        seq_len = 64,        # THE FIX: Matches the true 8x8 visual grid!
+        num_tokens = 1024,
+        seq_len = 64,
         dim = 512,
         depth = 6,
         dim_head = 64,
@@ -46,7 +44,6 @@ def main():
         flash = False
     )
     
-    # 3. Create the MaskGit Wrapper (No hacks needed anymore!)
     maskgit = MaskGit(
         vae = vae,
         transformer = transformer,
@@ -54,7 +51,6 @@ def main():
         cond_drop_prob = 0.1,  
     )
     
-    # 4. Standard CIFAR-100 Dataset
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor()
@@ -62,13 +58,10 @@ def main():
     dataset = datasets.CIFAR100(root=dataset_root, train=True, download=True, transform=transform)
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, drop_last=True, num_workers=4)
     
-    # 5. Optimizer
     optim = Adam(maskgit.parameters(), lr=3e-4)
     
-    # 6. Wrap everything with Accelerate
     maskgit, optim, dataloader = accelerator.prepare(maskgit, optim, dataloader)
     
-    # 7. The Training Loop
     epochs = 250  
     global_step = 0
     
@@ -79,7 +72,6 @@ def main():
             optim.zero_grad()
             
             texts = [f"class {label.item()}" for label in labels]
-            
             loss = maskgit(images, texts=texts)
             
             accelerator.backward(loss)

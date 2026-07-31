@@ -1,68 +1,81 @@
 import os
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1" 
-
 import torch
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from torchvision.utils import save_image
+
+# Monkey-patch HuggingFace Transformers v5 compatibility
+from transformers import PreTrainedTokenizerBase
+PreTrainedTokenizerBase.batch_encode_plus = PreTrainedTokenizerBase.__call__
+
 from muse_maskgit_pytorch import VQGanVAE, MaskGit, MaskGitTransformer
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../../"))
+
 def run_diagnostics():
-    print("--- STARTING MASKGIT DIAGNOSTICS ---")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    print("--- 1. Testing Stage 1 VAE Reconstruction Quality ---")
+    vae = VQGanVAE(dim=64, channels=3, layers=2, discr_layers=2, codebook_size=1024, temperature=0.9).to(device)
+    ema_path = os.path.join(PROJECT_ROOT, "checkpoints/maskgit/vqgan/vae.49000.ema.pt")
     
-    print("\n1. Loading VAE...")
-    vae = VQGanVAE(dim=64, channels=3, layers=2, discr_layers=2, num_tokens=8192, temperature=0.9).cuda()
-    ema_state_dict = torch.load("../../checkpoints/maskgit/vqgan/vae.49000.ema.pt", map_location="cuda")
-    
+    if not os.path.exists(ema_path):
+        print("VAE checkpoint not found!")
+        return
+
+    ema_state_dict = torch.load(ema_path, map_location=device)
     clean_state_dict = {k.replace("ema_model.", ""): v for k, v in ema_state_dict.items() if k.startswith("ema_model.")}
     vae.load_state_dict(clean_state_dict)
     vae.eval()
     
-    print("\n2. Loading test batch...")
+    # Load 8 real CIFAR-100 images
     transform = transforms.Compose([transforms.ToTensor()])
-    dataset = datasets.CIFAR100(root="../../data", train=True, download=True, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
-    images, _ = next(iter(dataloader))
-    images = images.cuda()
+    dataset = datasets.CIFAR100(root=os.path.join(PROJECT_ROOT, "data"), train=False, download=True, transform=transform)
+    real_imgs = torch.stack([dataset[i][0] for i in range(8)]).to(device)
     
-    print(f"-> Input Images Shape: {images.shape}")
-    
-    print("\n3. Testing VAE Token Output...")
     with torch.no_grad():
-        # The correct method in muse-maskgit-pytorch
-        _, token_indices, _ = vae.encode(images)
+        # Encode and decode the real images
+        encoded, _, _ = vae.encode(real_imgs)
+        recon_imgs = vae.decode(encoded)
         
-    print(f"-> Output Grid Shape: {token_indices.shape}")
-    print(f"-> Min Token ID: {token_indices.min().item()}")
-    print(f"-> Max Token ID: {token_indices.max().item()}")
+    # Save a comparison image (Top row: Real, Bottom row: VAE Reconstruction)
+    comparison = torch.cat([real_imgs, recon_imgs.clamp(0, 1)], dim=0)
+    out_img = os.path.join(SCRIPT_DIR, "vae_reconstruction_test.jpg")
+    save_image(comparison, out_img, nrow=8)
     
-    if token_indices.max().item() >= 8192:
-        print("\n!!! CRITICAL FINDING !!!")
-        print("Your VAE is outputting tokens larger than the 8192 codebook size.")
-        print("This means the Transformer's output layer is too small, causing the NLLLoss2d crash!")
+    print(f">> Saved {out_img}")
+    print(">> Action Required: Open this image. If the bottom row is blurry, the VAE is underpowered and needs fixing.")
+
+    print("\n--- 2. Testing Stage 2 Transformer Determinism ---")
+    transformer = MaskGitTransformer(num_tokens=1024, seq_len=64, dim=512, depth=6, dim_head=64, heads=8, ff_mult=4, flash=False).to(device)
+    maskgit = MaskGit(vae=vae, transformer=transformer, image_size=32).to(device)
+    trans_path = os.path.join(PROJECT_ROOT, "checkpoints/maskgit/transformer/maskgit_epoch_250.pt")
+
+    if not os.path.exists(trans_path):
+        print("Transformer checkpoint not found!")
         return
 
-    print("\n4. Building Transformer...")
-    seq_len = token_indices.shape[1]
-    print(f"-> Using True Sequence Length: {seq_len}")
+    maskgit.load_state_dict(torch.load(trans_path, map_location=device))
+    maskgit.eval()
     
-    transformer = MaskGitTransformer(
-        num_tokens = 8192,
-        seq_len = seq_len, 
-        dim = 512, depth = 6, dim_head = 64, heads = 8, ff_mult = 4, flash = False
-    ).cuda()
-    
-    transformer.num_tokens = vae.codebook_size
-    transformer.token_emb = torch.nn.Embedding(vae.codebook_size + 1, 512).cuda()
-    
-    print("\n5. Running MaskGIT Wrapper...")
-    maskgit = MaskGit(vae=vae, transformer=transformer, image_size=32, cond_drop_prob=0.1).cuda()
-    
-    try:
-        loss = maskgit(images, texts=["class 0", "class 1", "class 2", "class 3"])
-        print(f"\nSUCCESS! Forward pass completed. Loss: {loss.item()}")
-    except Exception as e:
-        print(f"\n!!! FORWARD PASS CRASHED !!!")
-        print(e)
+    with torch.no_grad():
+        print("Generating 5 independent images for 'class 0'...")
+        # Generate 5 images simultaneously
+        texts = ["class 0"] * 5
+        generated_imgs = maskgit.generate(texts=texts, cond_scale=1.5)
         
+    # Check if the images are mathematically identical
+    diff_1_2 = torch.abs(generated_imgs[0] - generated_imgs[1]).mean().item()
+    diff_1_5 = torch.abs(generated_imgs[0] - generated_imgs[4]).mean().item()
+    
+    print(f"Visual difference between Sample 1 and 2: {diff_1_2:.6f}")
+    print(f"Visual difference between Sample 1 and 5: {diff_1_5:.6f}")
+    
+    if diff_1_2 < 0.01:
+        print(">> VERDICT: The Transformer is suffering from Greedy Decoding (Mode Collapse).")
+        print(">> It is ignoring generation randomness and outputting the exact same tokens.")
+    else:
+        print(">> VERDICT: The Transformer is healthy and generating diverse samples.")
+
 if __name__ == "__main__":
     run_diagnostics()

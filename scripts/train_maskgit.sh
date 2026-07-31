@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:3g.71gb:1
 #SBATCH --mem=120G
 #SBATCH --qos=normal
-#SBATCH --container-image=/storage/DSH/projects/hardness_genai/image.sqsh
+#SBATCH --container-image=/storage/DSH/projects/hardness_genai/maskgit_image.sqsh
 #SBATCH --container-mounts=/storage/DSH/projects/hardness_genai/,/public_datasets/PublicDatasets/
 #SBATCH --output=/storage/DSH/projects/hardness_genai/outputs/maskgit_%j.out
 #SBATCH --error=/storage/DSH/projects/hardness_genai/outputs/maskgit_%j.err
@@ -15,13 +15,29 @@
 #SBATCH --mail-user=rmarchesi@fbk.eu
 
 
-echo "Starting MaskGIT Training on CIFAR-100"
-cd /storage/DSH/projects/hardness_genai/repos_genai/MaskGIT-pytorch
+PROJECT_ROOT="/storage/DSH/projects/hardness_genai"
+cd $PROJECT_ROOT/scripts/maskgit/
 
-echo "Stage 1: Training VQGAN Tokenizer..."
-python training_vqgan.py --dataset cifar100 --batch-size 128
+export NCCL_P2P_DISABLE=1
+export CUDA_HOME=/opt/compiler_env
+export PATH=/opt/compiler_env/bin:$PATH
+export CPATH=$CUDA_HOME/include:$CUDA_HOME/targets/x86_64-linux/include:$CPATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDA_HOME/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
-echo "Stage 2: Training Bidirectional Transformer..."
-python training_transformer.py --dataset cifar100 --batch-size 128
+# Strip out SLURM distributed variables
+unset LOCAL_RANK
+unset RANK
+unset WORLD_SIZE
+unset MASTER_ADDR
+unset MASTER_PORT
 
-echo "Job Complete or Exited!"
+echo "Starting MaskGIT Stage 1 (VQGAN) Training..."
+
+/opt/conda/bin/python train_vqgan.py
+
+
+echo "Starting MaskGIT Stage 2 (Transformer) Training..."
+
+/opt/conda/bin/python train_transformer.py
+
+echo "Transformer Job Complete!"
