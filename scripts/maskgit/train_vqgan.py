@@ -24,7 +24,7 @@ def main():
         dim = 128,          
         channels = 3,
         layers = 2,
-        discr_layers = 1,       
+        discr_layers = 2,       
         codebook_size = 256     
     )
 
@@ -32,7 +32,7 @@ def main():
         vae = vae,
         image_size = 32,            
         folder = data_dir,          
-        num_train_steps = 50000,    # THE FIX: Back to the full 50,000 steps!
+        num_train_steps = 50000,    
         lr = 1e-4,                  
         batch_size = 128,
         grad_accum_every = 1,
@@ -41,7 +41,7 @@ def main():
         results_folder = results_dir
     )
 
-    print("Starting VQGAN Stage 1 Training...")
+    print("Starting VQGAN Stage 1 Training (50,000 steps)...")
     trainer.train()
 
 if __name__ == '__main__':

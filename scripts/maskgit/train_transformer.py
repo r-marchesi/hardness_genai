@@ -15,10 +15,13 @@ def main():
     results_dir = "../../checkpoints/maskgit/transformer"
     os.makedirs(results_dir, exist_ok=True)
     
-    # Matches the healthy VAE
-    vae = VQGanVAE(dim=128, channels=3, layers=2, discr_layers=1, codebook_size=256)
+    vae = VQGanVAE(dim=128, channels=3, layers=2, discr_layers=2, codebook_size=256)
     
-    ema_state_dict = torch.load("../../checkpoints/maskgit/vqgan/vae.49000.ema.pt", map_location="cpu")
+    ema_path = "../../checkpoints/maskgit/vqgan/vae.49000.ema.pt"
+    if not os.path.exists(ema_path):
+        ema_path = "../../checkpoints/maskgit/vqgan/vae.50000.ema.pt"
+        
+    ema_state_dict = torch.load(ema_path, map_location="cpu")
     clean_state_dict = {k.replace("ema_model.", ""): v for k, v in ema_state_dict.items() if k.startswith("ema_model.")}
     
     vae.load_state_dict(clean_state_dict)
@@ -36,18 +39,26 @@ def main():
         flash = False
     )
     
-    maskgit = MaskGit(vae=vae, transformer=transformer, image_size=32, cond_drop_prob=0.1)
+    # THE FIX: Higher dropout forces the model to stop memorizing the text prompts
+    maskgit = MaskGit(
+        vae=vae, 
+        transformer=transformer, 
+        image_size=32, 
+        cond_drop_prob=0.25  
+    )
     
     transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
     dataset = datasets.CIFAR100(root=dataset_root, train=True, download=True, transform=transform)
     dataloader = DataLoader(dataset, batch_size=128, shuffle=True, drop_last=True, num_workers=4)
     
-    optim = Adam(maskgit.parameters(), lr=1e-4, weight_decay=0.01)
+    # THE FIX: Higher weight decay to prevent mathematical overconfidence
+    optim = Adam(maskgit.parameters(), lr=1e-4, weight_decay=0.05)
     maskgit, optim, dataloader = accelerator.prepare(maskgit, optim, dataloader)
     
     epochs = 250  
     global_step = 0
     
+    print("Starting MaskGIT Stage 2 (Transformer) Training...")
     for epoch in range(epochs):
         maskgit.train()
         for images, labels in dataloader:

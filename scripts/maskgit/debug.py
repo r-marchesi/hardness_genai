@@ -16,9 +16,16 @@ def run_diagnostics():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("--- 1. Testing Stage 1 VAE Reconstruction Quality ---")
-    vae = VQGanVAE(dim=64, channels=3, layers=2, discr_layers=2, codebook_size=1024, temperature=0.9).to(device)
+    
+    # UPDATE 1: discr_layers=2
+    vae = VQGanVAE(dim=128, channels=3, layers=2, discr_layers=2, codebook_size=256).to(device)
+    
     ema_path = os.path.join(PROJECT_ROOT, "checkpoints/maskgit/vqgan/vae.49000.ema.pt")
     
+    if not os.path.exists(ema_path):
+        # Fallback just in case it saved at 50000 instead
+        ema_path = os.path.join(PROJECT_ROOT, "checkpoints/maskgit/vqgan/vae.50000.ema.pt")
+        
     if not os.path.exists(ema_path):
         print("VAE checkpoint not found!")
         return
@@ -44,11 +51,15 @@ def run_diagnostics():
     save_image(comparison, out_img, nrow=8)
     
     print(f">> Saved {out_img}")
-    print(">> Action Required: Open this image. If the bottom row is blurry, the VAE is underpowered and needs fixing.")
+    print(">> Action Required: Open this image. You should see much better reconstruction than the 5,000-step sanity check.")
 
     print("\n--- 2. Testing Stage 2 Transformer Determinism ---")
-    transformer = MaskGitTransformer(num_tokens=1024, seq_len=64, dim=512, depth=6, dim_head=64, heads=8, ff_mult=4, flash=False).to(device)
-    maskgit = MaskGit(vae=vae, transformer=transformer, image_size=32).to(device)
+    
+    transformer = MaskGitTransformer(num_tokens=256, seq_len=64, dim=512, depth=6, dim_head=64, heads=8, ff_mult=4, flash=False).to(device)
+    
+    # UPDATE 2: cond_drop_prob=0.25
+    maskgit = MaskGit(vae=vae, transformer=transformer, image_size=32, cond_drop_prob=0.25).to(device)
+    
     trans_path = os.path.join(PROJECT_ROOT, "checkpoints/maskgit/transformer/maskgit_epoch_250.pt")
 
     if not os.path.exists(trans_path):
@@ -62,7 +73,9 @@ def run_diagnostics():
         print("Generating 5 independent images for 'class 0'...")
         # Generate 5 images simultaneously
         texts = ["class 0"] * 5
-        generated_imgs = maskgit.generate(texts=texts, cond_scale=1.5)
+        
+        # UPDATE 3: cond_scale=1.15
+        generated_imgs = maskgit.generate(texts=texts, cond_scale=1.15)
         
     # Check if the images are mathematically identical
     diff_1_2 = torch.abs(generated_imgs[0] - generated_imgs[1]).mean().item()

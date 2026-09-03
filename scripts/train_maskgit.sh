@@ -40,4 +40,9 @@ echo "Starting MaskGIT Stage 2 (Transformer) Training..."
 
 /opt/conda/bin/python train_transformer.py
 
+
+echo "Starting diagnostic..."
+
+/opt/conda/bin/python debug.py
+
 echo "Transformer Job Complete!"
