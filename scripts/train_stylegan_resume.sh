@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=stylegan_hardness
+#SBATCH --job-name=resume_stylegan_hardness
 #SBATCH --partition=h200
 #SBATCH --nodelist=euler
 #SBATCH --ntasks=1
@@ -9,8 +9,8 @@
 #SBATCH --qos=normal
 #SBATCH --container-image=/storage/DSH/projects/hardness_genai/stylegan_image.sqsh
 #SBATCH --container-mounts=/storage/DSH/projects/hardness_genai/,/public_datasets/PublicDatasets/
-#SBATCH --output=/storage/DSH/projects/hardness_genai/outputs/stylegan_%j.out
-#SBATCH --error=/storage/DSH/projects/hardness_genai/outputs/stylegan_%j.err
+#SBATCH --output=/storage/DSH/projects/hardness_genai/outputs/resume_stylegan_%j.out
+#SBATCH --error=/storage/DSH/projects/hardness_genai/outputs/resume_stylegan_%j.err
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=rmarchesi@fbk.eu
 
@@ -23,7 +23,9 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDA_HOME/targets/x86_64
 
 cd $PROJECT_ROOT/repos_genai/stylegan3
 
-echo "Starting Official Conditional StyleGAN Training..."
+echo "Resuming Official Conditional StyleGAN Training..."
+
+RESUME_PKL="$PROJECT_ROOT/checkpoints/stylegan/00025-stylegan2-cifar100_stylegan-gpus1-batch64-gamma0.01/network-snapshot-025000.pkl"
 
 /opt/conda/bin/python train.py \
     --outdir=$PROJECT_ROOT/checkpoints/stylegan \
@@ -34,7 +36,6 @@ echo "Starting Official Conditional StyleGAN Training..."
     --gamma=0.01 \
     --cond=1 \
     --mirror=1 \
-    --workers=1 \
-    --resume=$PROJECT_ROOT/checkpoints/stylegan/00016-stylegan2-cifar100_stylegan-gpus1-batch64-gamma0.01/network-snapshot-011289.pkl
+    --resume=$RESUME_PKL
 
 echo "Training Job Complete!"

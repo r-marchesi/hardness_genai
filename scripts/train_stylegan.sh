@@ -16,7 +16,6 @@
 
 PROJECT_ROOT="/storage/DSH/projects/hardness_genai"
 
-# Ensure PyTorch knows where our isolated container toolchain is
 export CUDA_HOME=/opt/compiler_env
 export PATH=/opt/compiler_env/bin:$PATH
 export CPATH=$CUDA_HOME/include:$CUDA_HOME/targets/x86_64-linux/include:$CPATH
