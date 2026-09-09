@@ -33,6 +33,7 @@ echo "Starting Official Conditional StyleGAN Training..."
     --batch=64 \
     --gamma=0.01 \
     --cond=1 \
-    --mirror=1
+    --mirror=1 \
+    --kimg=999999
 
 echo "Training Job Complete!"

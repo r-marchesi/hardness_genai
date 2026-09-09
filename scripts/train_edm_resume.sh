@@ -18,7 +18,7 @@ echo "Resuming EDM Training on CIFAR-100 (Single GPU MIG)"
 cd /storage/DSH/projects/hardness_genai/repos_genai/edm
 
 # Point directly to the training-state file
-RESUME_PT="../../checkpoints/edm/00000-cifar100_custom-cond-ddpmpp-edm-gpus1-batch512-fp32/training-state-075264.pt"
+RESUME_PT="../../checkpoints/edm/00001-cifar100_custom-cond-ddpmpp-edm-gpus1-batch512-fp32/training-state-125440.pt"
 
 # Launching on 1 GPU
 torchrun --standalone --nproc_per_node=1 train.py \
