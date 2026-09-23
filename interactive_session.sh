@@ -1,5 +1,5 @@
 srun \
---job-name="hardness" \
+--job-name="raffo" \
 --partition=h200 \
 --nodelist=euler \
 --gres=gpu:1g.35gb:1 \

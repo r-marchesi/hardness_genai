@@ -6,6 +6,7 @@ __pycache__/
 .DS_Store
 .ipynb_checkpoints/
 *.sqsh
+tmp/
 
 repos_genai/*/
 

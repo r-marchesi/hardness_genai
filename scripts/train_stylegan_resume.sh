@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=resume_stylegan_hardness
+#SBATCH --job-name=stylegan_hardness_resume
 #SBATCH --partition=h200
 #SBATCH --nodelist=euler
 #SBATCH --ntasks=1
@@ -21,11 +21,15 @@ export PATH=/opt/compiler_env/bin:$PATH
 export CPATH=$CUDA_HOME/include:$CUDA_HOME/targets/x86_64-linux/include:$CPATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDA_HOME/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
+# Isolate shared memory files to your permanent storage
+mkdir -p $PROJECT_ROOT/tmp
+export TMPDIR=$PROJECT_ROOT/tmp
+
 cd $PROJECT_ROOT/repos_genai/stylegan3
 
 echo "Resuming Official Conditional StyleGAN Training..."
 
-RESUME_PKL="$PROJECT_ROOT/checkpoints/stylegan/00025-stylegan2-cifar100_stylegan-gpus1-batch64-gamma0.01/network-snapshot-025000.pkl"
+RESUME_PKL="$PROJECT_ROOT/checkpoints/stylegan/00028-stylegan2-cifar100_stylegan-gpus1-batch64-gamma0.01/network-snapshot-111888.pkl"
 
 /opt/conda/bin/python train.py \
     --outdir=$PROJECT_ROOT/checkpoints/stylegan \
@@ -36,6 +40,7 @@ RESUME_PKL="$PROJECT_ROOT/checkpoints/stylegan/00025-stylegan2-cifar100_stylegan
     --gamma=0.01 \
     --cond=1 \
     --mirror=1 \
+    --kimg=999999 \
     --resume=$RESUME_PKL
 
 echo "Training Job Complete!"
