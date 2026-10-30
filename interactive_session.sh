@@ -3,7 +3,7 @@ srun \
 --partition=h200 \
 --nodelist=euler \
 --gres=gpu:1g.35gb:1 \
---cpus-per-task=4 \
+--cpus-per-task=8 \
 --mem=50G \
 --time=03:00:00 \
 --qos=expedite \
