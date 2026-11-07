@@ -4,7 +4,7 @@
 #SBATCH --nodelist=euler
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:3g.71gb:1
+#SBATCH --gres=gpu:h200:1
 #SBATCH --mem=120G
 #SBATCH --qos=normal
 #SBATCH --container-image=/storage/DSH/projects/hardness_genai/image.sqsh
@@ -24,5 +24,5 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDA_HOME/targets/x86_64
 cd $PROJECT_ROOT/scripts/checkpoints_process_tiny
 
 echo "Starting EDM Tiny-ImageNet Checkpoints Generation and Evaluation..."
-python process_edm_tiny.py
+python process_edm_tiny.py --batch_size 250
 echo "EDM Tiny-ImageNet Checkpoints Processing Complete!"

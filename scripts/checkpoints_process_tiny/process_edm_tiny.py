@@ -24,7 +24,13 @@ DEFAULT_SNAPSHOTS = [
     "network-snapshot-012544.pkl", "network-snapshot-015053.pkl",
     "network-snapshot-017562.pkl", "network-snapshot-020070.pkl",
     "network-snapshot-022579.pkl", "network-snapshot-025088.pkl",
-    "network-snapshot-027597.pkl"
+    "network-snapshot-027597.pkl",
+    "network-snapshot-030106.pkl", "network-snapshot-032614.pkl",
+    "network-snapshot-035123.pkl", "network-snapshot-037632.pkl",
+    "network-snapshot-040141.pkl", "network-snapshot-042650.pkl",
+    "network-snapshot-045158.pkl", "network-snapshot-047667.pkl",
+    "network-snapshot-050176.pkl", "network-snapshot-052685.pkl",
+    "network-snapshot-055194.pkl"
 ]
 
 # Uncomment below if you strictly want only the 10,035 kimg interval:
