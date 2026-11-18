@@ -4,7 +4,7 @@
 #SBATCH --nodelist=euler
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:h200:1
+#SBATCH --gres=gpu:3g.71gb:1
 #SBATCH --mem=120G
 #SBATCH --qos=normal
 #SBATCH --container-image=/storage/DSH/projects/hardness_genai/image.sqsh

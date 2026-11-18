@@ -17,20 +17,31 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from generate import edm_sampler
 
-# Compute-equivalent progression (every 2,509 kimg saved in 00001)
+# Compute-equivalent progression (every ~2,509 kimg)
 DEFAULT_SNAPSHOTS = [
     "network-snapshot-002509.pkl", "network-snapshot-005018.pkl",
     "network-snapshot-007526.pkl", "network-snapshot-010035.pkl",
     "network-snapshot-012544.pkl", "network-snapshot-015053.pkl",
     "network-snapshot-017562.pkl", "network-snapshot-020070.pkl",
     "network-snapshot-022579.pkl", "network-snapshot-025088.pkl",
-    "network-snapshot-027597.pkl",
-    "network-snapshot-030106.pkl", "network-snapshot-032614.pkl",
-    "network-snapshot-035123.pkl", "network-snapshot-037632.pkl",
-    "network-snapshot-040141.pkl", "network-snapshot-042650.pkl",
-    "network-snapshot-045158.pkl", "network-snapshot-047667.pkl",
-    "network-snapshot-050176.pkl", "network-snapshot-052685.pkl",
-    "network-snapshot-055194.pkl"
+    "network-snapshot-027597.pkl", "network-snapshot-030106.pkl",
+    "network-snapshot-032614.pkl", "network-snapshot-035123.pkl",
+    "network-snapshot-037632.pkl", "network-snapshot-040141.pkl",
+    "network-snapshot-042650.pkl", "network-snapshot-045158.pkl",
+    "network-snapshot-047667.pkl", "network-snapshot-050176.pkl",
+    "network-snapshot-052685.pkl", "network-snapshot-055194.pkl",
+    "network-snapshot-057702.pkl", "network-snapshot-060211.pkl",
+    "network-snapshot-062720.pkl", "network-snapshot-065229.pkl",
+    "network-snapshot-067738.pkl", "network-snapshot-070246.pkl",
+    "network-snapshot-072755.pkl", "network-snapshot-075264.pkl",
+    "network-snapshot-077773.pkl", "network-snapshot-080282.pkl",
+    "network-snapshot-082790.pkl", "network-snapshot-085299.pkl",
+    "network-snapshot-087808.pkl", "network-snapshot-090317.pkl",
+    "network-snapshot-092826.pkl", "network-snapshot-095334.pkl",
+    "network-snapshot-097843.pkl", "network-snapshot-100352.pkl",
+    "network-snapshot-102861.pkl", "network-snapshot-105370.pkl",
+    "network-snapshot-107878.pkl", "network-snapshot-110387.pkl",
+    "network-snapshot-112896.pkl", "network-snapshot-115405.pkl",
 ]
 
 # Uncomment below if you strictly want only the 10,035 kimg interval:
